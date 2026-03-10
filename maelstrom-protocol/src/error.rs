@@ -1,41 +1,43 @@
-#[derive(Debug, Clone)]
-pub enum MaelstromError {
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Error {
     /// Indicates that the requested operation could not be completed within a timeout.
-    Timeout = 0,
+    Timeout,
     /// Thrown when a client sends an RPC request to a node which does not exist.
-    NodeNotFound = 1,
+    NodeNotFound,
     /// Use this error to indicate that a requested operation is not supported by the current implementation.
-    NotSupported = 10,
+    NotSupported(Option<String>),
     /// Indicates that the operation definitely cannot be performed at this time--perhaps because
     /// the server is in a read-only state, has not yet been initialized, believes its peers to be down, and so on.
-    TemporarilyUnavailable = 11,
+    TemporarilyUnavailable,
     /// The client's request did not conform to the server's expectations, and could not possibly have been processed.
-    MalformedRequest = 12,
+    MalformedRequest,
     /// Indicates that some kind of general, indefinite error occurred.
-    Crash = 13,
+    Crash,
     /// Indicates that some kind of general, definite error occurred. Use this as a catch-all for errors
     /// you can't otherwise categorize, when you specifically know that the requested operation has not taken place.
-    Abort = 14,
+    Abort,
     /// The client requested an operation on a key which does not exist (assuming the operation should not automatically create missing keys).
-    KeyDoesNotExist = 20,
+    KeyDoesNotExist,
     /// The client requested the creation of a key which already exists, and the server will not overwrite it.
-    KeyAlreadyExist = 21,
+    KeyAlreadyExist,
     /// The requested operation expected some conditions to hold, and those conditions were not met.
-    PreconditionFailed = 22,
+    PreconditionFailed,
     /// The requested transaction has been aborted because of a conflict with another transaction.
-    TxnConflict = 30,
+    TxnConflict,
     /// Custom error that you can use. Composed of a code and an String error
-    /// codes 10000 and above are free for your own purposes.
-    CustomError((u64, String)),
+    /// codes 1000 and above are free for your own purposes.
+    CustomError((i32, Option<String>)),
 }
 
-impl MaelstromError {
+impl Error {
     /// Returns the numeric error code associated with this error.
-    pub fn code(&self) -> u64 {
+    pub fn code(&self) -> i32 {
         match self {
             Self::Timeout => 0,
             Self::NodeNotFound => 1,
-            Self::NotSupported => 10,
+            Self::NotSupported(_) => 10,
             Self::TemporarilyUnavailable => 11,
             Self::MalformedRequest => 12,
             Self::Crash => 13,
@@ -44,23 +46,23 @@ impl MaelstromError {
             Self::KeyAlreadyExist => 21,
             Self::PreconditionFailed => 22,
             Self::TxnConflict => 30,
-            Self::CustomError((code, _)) => {
-                if *code > 1_000 {
-                    *code
-                } else {
-                    unreachable!()
-                }
-            }
+            Self::CustomError((code, _)) => *code,
         }
     }
 }
 
-impl std::fmt::Display for MaelstromError {
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Timeout => write!(f, "Timeout"),
             Self::NodeNotFound => write!(f, "NodeNotFound"),
-            Self::NotSupported => write!(f, "NotSupported"),
+            Self::NotSupported(err) => {
+                if let Some(err) = err {
+                    write!(f, "NotSupported: {}", err)
+                } else {
+                    write!(f, "NotSupported")
+                }
+            }
             Self::TemporarilyUnavailable => write!(f, "TemporarilyUnavailable"),
             Self::MalformedRequest => write!(f, "MalformedRequest"),
             Self::Crash => write!(f, "Crash"),
@@ -69,9 +71,29 @@ impl std::fmt::Display for MaelstromError {
             Self::KeyAlreadyExist => write!(f, "KeyAlreadyExist"),
             Self::PreconditionFailed => write!(f, "PreconditionFailed"),
             Self::TxnConflict => write!(f, "TxnConflict"),
-            Self::CustomError((_, err)) => write!(f, "{}", err),
+            Self::CustomError((_, err)) => {
+                if let Some(err) = err {
+                    write!(f, "CustomError: {}", err)
+                } else {
+                    write!(f, "CustomError")
+                }
+            }
         }
     }
 }
 
-impl std::error::Error for MaelstromError {}
+impl std::error::Error for Error {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_error_serialization() {
+        let err = Error::NotSupported(Some("unsupported operation".to_string()));
+        let expected = json!({"NotSupported": "unsupported operation"});
+        let actual = serde_json::to_value(err).unwrap();
+        assert_eq!(actual, expected);
+    }
+}

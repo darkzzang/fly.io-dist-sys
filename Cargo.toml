@@ -3,7 +3,8 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = ["maelstrom-broadcast", "maelstrom-counter","maelstrom-echo", "maelstrom-kafka", "maelstrom-txn", "maelstrom-unique-ids"]
+resolver = "3"
+members = ["maelstrom-broadcast", "maelstrom-counter","maelstrom-echo", "maelstrom-kafka", "maelstrom-protocol", "maelstrom-txn", "maelstrom-unique-ids"]
 
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }
