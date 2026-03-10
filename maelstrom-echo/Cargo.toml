@@ -1,7 +1,8 @@
 [package]
-name = "maelstrom-echo"
+name = "maelstrom_echo"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
 maelstrom_protocol = { path = "../maelstrom-protocol" }
+serde_json = { workspace = true }

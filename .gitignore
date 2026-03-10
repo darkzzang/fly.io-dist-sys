@@ -5,3 +5,4 @@ target.tmp/*
 data/
 Cargo.lock
 .DS_Store
+store/*
