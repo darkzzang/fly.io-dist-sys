@@ -1,0 +1,7 @@
+.zed/*
+target/*
+target.tmp/*
+.cargo/*
+data/
+Cargo.lock
+.DS_Store
