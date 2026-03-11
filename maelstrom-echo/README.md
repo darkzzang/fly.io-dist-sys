@@ -34,7 +34,7 @@ Our first challenge is more of a “getting started” guide" to get the hang of
 maelstrom test -w echo --bin target.tmp/release/maelstrom_echo --node-count 1 --time-limit 10
 ```
 
-### Debuggin Maelstrom
+### Debuging Maelstrom
 ```sh
 maelstrom serve
 ```
