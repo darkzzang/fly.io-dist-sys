@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     gnuplot \
     wget \
     bzip2 \
+    git \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /opt
 RUN wget https://github.com/jepsen-io/maelstrom/releases/download/v0.2.3/maelstrom.tar.bz2 \
