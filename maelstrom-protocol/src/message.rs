@@ -65,6 +65,10 @@ pub enum Payload {
         code: i32,
         text: String,
     },
+    Generate,
+    GenerateOk {
+        id: String,
+    },
     None,
 }
 
