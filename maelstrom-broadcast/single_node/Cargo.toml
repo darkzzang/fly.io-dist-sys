@@ -1,0 +1,9 @@
+[package]
+name = "single_node"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+maelstrom_protocol = { path = "../../maelstrom-protocol" }
+serde = { workspace = true }
+serde_json = { workspace = true } 

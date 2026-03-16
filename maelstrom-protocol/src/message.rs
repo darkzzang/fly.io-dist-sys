@@ -1,5 +1,6 @@
 use crate::error::Error as AppError;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Message {
@@ -69,7 +70,21 @@ pub enum Payload {
     GenerateOk {
         id: String,
     },
+    Broadcast {
+        message: u64,
+    },
+    BroadcastOk,
+    Read,
+    ReadOk {
+        messages: Vec<u64>,
+    },
+    Topology {
+        topology: HashMap<String, Vec<String>>,
+    },
+    TopologyOk,
     None,
+    #[serde(other)]
+    UnknownMessage,
 }
 
 impl Payload {
