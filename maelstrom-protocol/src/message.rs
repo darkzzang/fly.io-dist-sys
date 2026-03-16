@@ -82,6 +82,9 @@ pub enum Payload {
         topology: HashMap<String, Vec<String>>,
     },
     TopologyOk,
+    Gossip {
+        message: u64,
+    },
     None,
     #[serde(other)]
     UnknownMessage,
