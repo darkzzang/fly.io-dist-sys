@@ -109,6 +109,10 @@ impl Node {
     pub fn generate_id(&self) -> String {
         format!("{}-{}", self.state.read().unwrap().id, self.next_seq())
     }
+
+    pub fn is_uninitialized(&self) -> bool {
+        matches!(self.state.read().unwrap().id, IdType::None)
+    }
 }
 
 #[derive(Clone, Debug)]

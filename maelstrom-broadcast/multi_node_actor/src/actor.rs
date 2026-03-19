@@ -56,7 +56,6 @@ impl StdinActor {
                             for message in messages {
                                 self.node.set_messages(message);
                             }
-
                             vec![]
                         }
                         Payload::Read => vec![Payload::ReadOk {
@@ -111,12 +110,9 @@ impl StdinActor {
             ticker.tick().await;
 
             let node_id = node.get_id();
-            if node_id == "uninitialized" {
-                continue;
-            }
-
             let known_msgs = node.messages();
-            if known_msgs.is_empty() {
+
+            if known_msgs.is_empty() || node.is_uninitialized() {
                 continue;
             }
 
@@ -132,6 +128,7 @@ impl StdinActor {
                         },
                     },
                 };
+
                 tx.send(gossip_msg).unwrap();
             }
         }
