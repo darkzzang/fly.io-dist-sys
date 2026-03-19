@@ -75,11 +75,6 @@ impl StdinActor {
 
                     for reply_payload in reply_payloads {
                         let reply_body = match reply_payload {
-                            Payload::Gossip { .. } => MessageBody {
-                                msg_id: None,
-                                in_reply_to: None,
-                                payload: reply_payload,
-                            },
                             Payload::Generate { .. } => MessageBody {
                                 msg_id: Some(self.node.get_seq()),
                                 in_reply_to: msg.body.msg_id,

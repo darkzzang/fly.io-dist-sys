@@ -69,7 +69,7 @@ impl Node {
     }
 
     pub fn get_id(&self) -> String {
-        self.state.write().unwrap().id.to_string()
+        self.state.read().unwrap().id.to_string()
     }
 
     pub fn get_seq(&self) -> usize {
