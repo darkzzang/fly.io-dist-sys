@@ -39,16 +39,29 @@ fn main() {
             }
             Payload::Broadcast { message } => {
                 if node.set_messages(message) {
-                    vec![Payload::Gossip { message }, Payload::BroadcastOk]
+                    vec![
+                        Payload::Gossip {
+                            messages: vec![message],
+                        },
+                        Payload::BroadcastOk,
+                    ]
                 } else {
                     vec![Payload::BroadcastOk]
                 }
             }
-            Payload::Gossip { message } => {
-                if node.set_messages(message) {
-                    vec![Payload::Gossip { message }]
-                } else {
+            Payload::Gossip { messages } => {
+                let mut new_msg = Vec::new();
+
+                for message in &messages {
+                    if node.set_messages(*message) {
+                        new_msg.push(*message);
+                    }
+                }
+
+                if new_msg.is_empty() {
                     vec![]
+                } else {
+                    vec![Payload::Gossip { messages: new_msg }]
                 }
             }
             Payload::Read => vec![Payload::ReadOk {

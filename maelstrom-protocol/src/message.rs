@@ -47,7 +47,7 @@ impl MessageBody {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum Payload {
@@ -83,7 +83,7 @@ pub enum Payload {
     },
     TopologyOk,
     Gossip {
-        message: u64,
+        messages: Vec<u64>,
     },
     None,
     #[serde(other)]

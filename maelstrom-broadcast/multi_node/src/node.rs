@@ -89,7 +89,8 @@ impl Node {
     }
 
     pub fn neighbors(&self, k: &str) -> Vec<String> {
-        let topology = self.topology().get(k).cloned().unwrap_or(vec![]);
+        let node_id = self.get_id();
+        let topology = self.topology().get(&node_id).cloned().unwrap_or(vec![]);
         topology.into_iter().filter(|v| v != k).collect()
     }
 
