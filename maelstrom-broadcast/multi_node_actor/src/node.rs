@@ -76,11 +76,11 @@ impl Node {
         self.counter.load(Ordering::Relaxed)
     }
 
-    pub fn set_messages(&mut self, msg: u64) -> bool {
+    pub fn set_messages(&self, msg: u64) -> bool {
         self.state.write().unwrap().set_messages(msg)
     }
 
-    pub fn set_topology(&mut self, node_id: impl Into<String>, nodes: &Vec<String>) {
+    pub fn set_topology(&self, node_id: impl Into<String>, nodes: &Vec<String>) {
         self.state.write().unwrap().set_topology(node_id, nodes);
     }
 
