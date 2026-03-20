@@ -6,7 +6,9 @@ edition = "2024"
 resolver = "3"
 members = [
     "maelstrom-broadcast/efficiency_1",
+    "maelstrom-broadcast/efficiency_1_actor",
     "maelstrom-broadcast/efficiency_2",
+    "maelstrom-broadcast/efficiency_2_actor",
     "maelstrom-broadcast/fault_tolerant",
     "maelstrom-broadcast/fault_tolerant_actor",
     "maelstrom-broadcast/multi_node",

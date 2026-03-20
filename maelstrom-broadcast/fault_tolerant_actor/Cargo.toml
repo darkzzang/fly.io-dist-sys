@@ -1,0 +1,10 @@
+[package]
+name = "fault_tolerant_actor"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tokio = { workspace = true }
+maelstrom_protocol = { path = "../../maelstrom-protocol" }
+serde = { workspace = true }
+serde_json = { workspace = true } 
