@@ -80,7 +80,7 @@ impl Node {
         self.state.write().unwrap().set_messages(msg)
     }
 
-    pub fn set_topology(&self, node_id: impl Into<String>, nodes: &Vec<String>) {
+    pub fn set_topology(&self, node_id: impl Into<String>, nodes: &[String]) {
         self.state.write().unwrap().set_topology(node_id, nodes);
     }
 
@@ -135,13 +135,13 @@ impl NodeState {
         self.messages.insert(msg)
     }
 
-    pub fn set_topology(&mut self, node_id: impl Into<String>, nodes: &Vec<String>) {
+    pub fn set_topology(&mut self, node_id: impl Into<String>, nodes: &[String]) {
         self.topology
             .entry(node_id.into())
             .and_modify(|v| {
                 v.extend_from_slice(nodes);
             })
-            .or_insert(nodes.clone());
+            .or_insert(nodes.to_owned());
     }
 
     pub fn messages(&self) -> Vec<u64> {

@@ -52,7 +52,7 @@ impl StdinActor {
                             self.node.set_messages(message);
                             vec![Payload::BroadcastOk]
                         }
-                        Payload::Gossip { messages } => {
+                        Payload::Gossip { messages, .. } => {
                             for message in messages {
                                 self.node.set_messages(message);
                             }
@@ -74,7 +74,7 @@ impl StdinActor {
 
                     for reply_payload in reply_payloads {
                         let reply_body = match reply_payload {
-                            Payload::Generate { .. } => MessageBody {
+                            Payload::Generate => MessageBody {
                                 msg_id: Some(self.node.get_seq()),
                                 in_reply_to: msg.body.msg_id,
                                 payload: reply_payload,
@@ -125,6 +125,7 @@ impl StdinActor {
                         in_reply_to: None,
                         payload: Payload::Gossip {
                             messages: known_msgs.clone(),
+                            cursor: None,
                         },
                     },
                 };

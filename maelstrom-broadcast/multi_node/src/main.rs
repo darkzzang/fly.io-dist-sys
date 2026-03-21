@@ -42,6 +42,7 @@ fn main() {
                     vec![
                         Payload::Gossip {
                             messages: vec![message],
+                            cursor: None,
                         },
                         Payload::BroadcastOk,
                     ]
@@ -49,7 +50,10 @@ fn main() {
                     vec![Payload::BroadcastOk]
                 }
             }
-            Payload::Gossip { messages } => {
+            Payload::Gossip {
+                messages,
+                cursor: _,
+            } => {
                 let mut new_msg = Vec::new();
 
                 for message in &messages {
@@ -61,7 +65,10 @@ fn main() {
                 if new_msg.is_empty() {
                     vec![]
                 } else {
-                    vec![Payload::Gossip { messages: new_msg }]
+                    vec![Payload::Gossip {
+                        messages: new_msg,
+                        cursor: None,
+                    }]
                 }
             }
             Payload::Read => vec![Payload::ReadOk {
@@ -82,7 +89,10 @@ fn main() {
 
         for reply_payload in reply_payloads {
             let reply_body = match reply_payload {
-                Payload::Gossip { .. } => MessageBody {
+                Payload::Gossip {
+                    messages: _,
+                    cursor: _,
+                } => MessageBody {
                     msg_id: None,
                     in_reply_to: None,
                     payload: reply_payload,
@@ -112,8 +122,11 @@ fn set_reply_msgs(
 ) {
     let new_src = node.get_id();
     match reply_body.payload {
-        Payload::Gossip { .. } => {
-            for target in node.neighbors(&src) {
+        Payload::Gossip {
+            messages: _,
+            cursor: _,
+        } => {
+            for target in node.neighbors(src) {
                 buffer.push(Message {
                     src: new_src.to_string(),
                     dest: target,

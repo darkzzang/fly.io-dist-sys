@@ -11,6 +11,7 @@ const INTERVAL: u64 = 100;
 fn main() {
     let (tx, rx) = mpsc::channel::<Message>();
     let stdin = io::stdin();
+    let mut msg_id_counter = 0_usize;
 
     thread::spawn(move || {
         let mut stdout = io::stdout();
@@ -46,6 +47,7 @@ fn main() {
                     in_reply_to: None,
                     payload: Payload::Gossip {
                         messages: messages.clone(),
+                        cursor: None,
                     },
                 };
                 let msg = Message {
@@ -89,12 +91,15 @@ fn main() {
                 node.write().unwrap().set_messages(message);
                 Payload::BroadcastOk
             }
-            Payload::Gossip { messages } => {
+            Payload::Gossip { messages, .. } => {
                 let mut locked_node = node.write().unwrap();
                 for message in &messages {
                     locked_node.set_messages(*message);
                 }
-                Payload::Gossip { messages }
+                Payload::Gossip {
+                    messages,
+                    cursor: None,
+                }
             }
             Payload::Read => Payload::ReadOk {
                 messages: node.write().unwrap().messages(),
@@ -110,13 +115,15 @@ fn main() {
             }
         };
 
+        msg_id_counter += 1;
+
         match reply_payload {
             Payload::Gossip { .. } => {
                 continue;
             }
             _ => {
                 let reply_body = MessageBody {
-                    msg_id: Some(1), // FIXME
+                    msg_id: Some(msg_id_counter),
                     in_reply_to: msg.body.msg_id,
                     payload: reply_payload,
                 };
