@@ -55,6 +55,7 @@ pub struct Node {
     storage: Storage,
 }
 
+#[allow(unused)]
 impl Node {
     pub fn new() -> Self {
         Self {
@@ -72,7 +73,7 @@ impl Node {
         self.storage.set_messages(msg);
     }
 
-    pub fn set_topology(&mut self, node_id: impl Into<String>, nodes: &Vec<String>) {
+    pub fn set_topology(&mut self, node_id: impl Into<String>, nodes: &[String]) {
         self.storage.set_topology(node_id, nodes);
     }
 
@@ -95,6 +96,7 @@ pub struct Storage {
     topology: HashMap<String, Vec<String>>,
 }
 
+#[allow(unused)]
 impl Storage {
     pub fn new() -> Self {
         Self {
@@ -107,13 +109,13 @@ impl Storage {
         self.messages.insert(msg);
     }
 
-    pub fn set_topology(&mut self, node_id: impl Into<String>, nodes: &Vec<String>) {
+    pub fn set_topology(&mut self, node_id: impl Into<String>, nodes: &[String]) {
         self.topology
             .entry(node_id.into())
             .and_modify(|v| {
                 nodes.iter().for_each(|n| v.push(n.clone()));
             })
-            .or_insert(nodes.clone());
+            .or_insert(nodes.to_owned());
     }
 
     pub fn messages(&self) -> Vec<u64> {
