@@ -84,6 +84,10 @@ pub enum Payload {
     TopologyOk,
     Gossip {
         messages: Vec<u64>,
+        cursor: Option<usize>,
+    },
+    GossipOk {
+        cursor: usize,
     },
     None,
     #[serde(other)]
