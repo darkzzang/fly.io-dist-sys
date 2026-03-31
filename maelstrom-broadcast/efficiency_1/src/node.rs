@@ -72,8 +72,8 @@ impl Node {
         self.id.to_string()
     }
 
-    pub fn set_messages(&mut self, msg: u64) -> bool {
-        self.storage.set_messages(msg)
+    pub fn set_messages(&mut self, msg: u64, src: Option<String>) -> bool {
+        self.storage.set_messages(msg, src)
     }
 
     pub fn set_topology(&mut self, node_id: impl Into<String>, nodes: &[String]) {
@@ -99,19 +99,37 @@ impl Node {
         format!("{}-{}", self.id, count)
     }
 
-    pub fn update_cursor(&mut self, target: &str, cursor: usize) {
-        self.storage.update_cursor(target, cursor);
+    pub fn update_ack_cursor(&mut self, target: &str, cursor: usize) {
+        self.storage.update_ack_cursor(target, cursor);
     }
 
-    pub fn cursors(&self) -> HashMap<String, usize> {
-        self.storage.cursors()
+    pub fn ack_cursors(&self) -> HashMap<String, usize> {
+        self.storage.ack_cursors()
+    }
+
+    pub fn update_sent_cursor(&mut self, target: &str, cursor: usize) {
+        self.storage.update_sent_cursor(target, cursor);
+    }
+
+    pub fn sent_cursors(&self) -> HashMap<String, usize> {
+        self.storage.sent_cursors()
+    }
+
+    pub fn sync_cursor(&mut self) {
+        self.storage.sync_cursor();
+    }
+
+    pub fn get_source(&self, msg: u64) -> Option<String> {
+        self.storage.get_source(msg)
     }
 }
 
 pub struct Storage {
     messages: HashSet<u64>,
     ordered_messages: Vec<u64>,
-    cursors: HashMap<String, usize>,
+    ack_cursors: HashMap<String, usize>,
+    sent_cursors: HashMap<String, usize>,
+    msg_src_list: HashMap<u64, String>,
     topology: HashMap<String, Vec<String>>,
 }
 
@@ -120,26 +138,32 @@ impl Storage {
         Self {
             messages: HashSet::new(),
             ordered_messages: Vec::new(),
-            cursors: HashMap::new(),
+            ack_cursors: HashMap::new(),
+            sent_cursors: HashMap::new(),
+            msg_src_list: HashMap::new(),
             topology: HashMap::new(),
         }
     }
 
-    pub fn set_messages(&mut self, msg: u64) -> bool {
+    pub fn set_messages(&mut self, msg: u64, source: Option<String>) -> bool {
         if self.messages.insert(msg) {
             self.ordered_messages.push(msg);
+            if let Some(src) = source {
+                self.msg_src_list.insert(msg, src);
+            }
             true
         } else {
             false
         }
     }
 
+    pub fn get_source(&self, msg: u64) -> Option<String> {
+        self.msg_src_list.get(&msg).cloned()
+    }
+
     pub fn set_topology(&mut self, node_id: impl Into<String>, nodes: &[String]) {
         self.topology
             .entry(node_id.into())
-            .and_modify(|v| {
-                v.extend_from_slice(nodes);
-            })
             .or_insert(nodes.to_owned());
     }
 
@@ -151,12 +175,38 @@ impl Storage {
         &self.topology
     }
 
-    pub fn update_cursor(&mut self, target: &str, cursor: usize) {
-        let key = target.to_string();
-        self.cursors.entry(key).insert_entry(cursor);
+    pub fn update_ack_cursor(&mut self, target: &str, cursor: usize) {
+        let ack_cursor = self
+            .ack_cursors
+            .get(target)
+            .copied()
+            .unwrap_or(0)
+            .max(cursor);
+
+        self.ack_cursors
+            .entry(target.to_string())
+            .insert_entry(ack_cursor);
     }
 
-    pub fn cursors(&self) -> HashMap<String, usize> {
-        self.cursors.clone()
+    pub fn ack_cursors(&self) -> HashMap<String, usize> {
+        self.ack_cursors.clone()
+    }
+
+    pub fn update_sent_cursor(&mut self, target: &str, cursor: usize) {
+        let key = target.to_string();
+        self.sent_cursors.entry(key).insert_entry(cursor);
+    }
+
+    pub fn sent_cursors(&self) -> HashMap<String, usize> {
+        self.sent_cursors.clone()
+    }
+
+    pub fn sync_cursor(&mut self) {
+        let keys = self.sent_cursors.keys().cloned().collect::<Vec<String>>();
+
+        keys.iter().for_each(|k| {
+            let ack_cursor = self.ack_cursors.get(k).copied().unwrap_or(0);
+            self.sent_cursors.insert(k.clone(), ack_cursor);
+        });
     }
 }
