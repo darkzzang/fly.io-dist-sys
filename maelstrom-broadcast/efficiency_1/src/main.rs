@@ -93,7 +93,7 @@ fn main() {
                     msg_id: None,
                     in_reply_to: None,
                     payload: Payload::Gossip {
-                        messages: messages.clone(),
+                        messages: filtered_msgs,
                         cursor: Some(new_cursor),
                     },
                 };
