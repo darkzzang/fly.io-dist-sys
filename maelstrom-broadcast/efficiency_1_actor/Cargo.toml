@@ -1,0 +1,10 @@
+[package]
+name = "efficiency_1_actor"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+maelstrom_protocol = { path = "../../maelstrom-protocol" }
+serde = { workspace = true }
+serde_json = { workspace = true } 
+tokio = { workspace = true }
