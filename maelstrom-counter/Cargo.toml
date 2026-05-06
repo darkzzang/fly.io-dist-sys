@@ -1,0 +1,22 @@
+[package]
+name = "maelstrom-counter"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+maelstrom_protocol = { path = "../maelstrom-protocol" }
+serde = { workspace = true }
+serde_json = { workspace = true } 
+tokio = { workspace = true, optional = true }
+
+[features]
+actor = ["dep:tokio"]
+
+[[bin]]
+name = "maelstrom_counter"
+path = "src/bin/maelstrom_counter.rs"
+
+[[bin]]
+name = "maelstrom_counter_actor"
+path = "src/bin/maelstrom_counter_actor.rs"
+

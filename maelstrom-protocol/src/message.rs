@@ -51,6 +51,10 @@ impl MessageBody {
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum Payload {
+    Add {
+        delta: u64,
+    },
+    AddOk,
     Init {
         node_id: String,
         node_ids: Vec<String>,
@@ -74,10 +78,29 @@ pub enum Payload {
         message: u64,
     },
     BroadcastOk,
-    Read,
-    ReadOk {
-        messages: Vec<u64>,
+    Read {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        key: Option<String>,
     },
+    ReadOk {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        messages: Option<Vec<u64>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        value: Option<u64>,
+    },
+    Write {
+        key: String,
+        value: u64,
+    },
+    WriteOk,
+    Cas {
+        key: String,
+        from: u64,
+        to: u64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        create_if_not_exists: Option<bool>,
+    },
+    CasOk,
     Topology {
         topology: HashMap<String, Vec<String>>,
     },
