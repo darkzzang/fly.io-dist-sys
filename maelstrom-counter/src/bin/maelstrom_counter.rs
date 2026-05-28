@@ -14,6 +14,8 @@ const INTERVAL: u64 = 100;
 const THRESHOLD: u64 = 600;
 // Latency of other node in challenge.(ms)
 const LATENCY: u64 = 100;
+// Intverval for async flush.(ms)
+const ASYNC_INTERVAL: u64 = 1_000;
 
 fn main() {
     let (tx, rx) = mpsc::channel::<Message>();
@@ -119,6 +121,45 @@ fn main() {
         }
     });
 
+    let node_clone_flush = Arc::clone(&node);
+    let tx_clone_flush = tx.clone();
+    let pending_requests_flush = Arc::clone(&pending_requests);
+
+    thread::spawn(move || {
+        let mut last_flushed_sum = 0;
+
+        loop {
+            thread::sleep(Duration::from_millis(ASYNC_INTERVAL));
+
+            let (current_sum, node_id) = {
+                let locked_node = node_clone_flush.read().unwrap();
+                (locked_node.get_local_sum(), locked_node.get_id())
+            };
+
+            if node_id == "uninitialized" || current_sum == 0 || current_sum == last_flushed_sum {
+                continue;
+            }
+
+            let partition_key = format!("counter_{}", node_id);
+
+            let write_payload = Payload::Write {
+                key: partition_key,
+                value: current_sum as u64,
+            };
+
+            let write_result = node_clone_flush.read().unwrap().sync_rpc_call(
+                "seq-kv",
+                write_payload,
+                &tx_clone_flush,
+                &pending_requests_flush,
+            );
+
+            if let Ok(Payload::WriteOk) = write_result {
+                last_flushed_sum = current_sum;
+            }
+        }
+    });
+
     for line in stdin.lock().lines() {
         let line = match line {
             Ok(l) => l,
@@ -156,6 +197,7 @@ fn main() {
             Payload::Init { node_id, node_ids } => {
                 let mut locked_node = node.write().unwrap();
                 locked_node.set_id(IdType::Text(node_id.clone()));
+                locked_node.set_all_nodes(node_ids.clone());
 
                 let mut sorted_nodes = node_ids.clone();
                 sorted_nodes.sort();
@@ -210,33 +252,45 @@ fn main() {
                 let pending_requests_clone = Arc::clone(&pending_requests);
 
                 thread::spawn(move || {
-                    let read_payload = Payload::Read {
-                        key: Some("global_counter".to_string()),
+                    let mut total_sum = 0_u64;
+                    let (all_nodes, my_node_id) = {
+                        let locked_node = node_clone.read().unwrap();
+                        (locked_node.get_all_nodes(), locked_node.get_id())
                     };
-                    let read_result = node_clone.read().unwrap().sync_rpc_call(
-                        "seq-kv",
-                        read_payload,
-                        &tx_clone,
-                        &pending_requests_clone,
-                    );
-                    let current_value = match read_result {
-                        Ok(Payload::ReadOk { value: Some(v), .. }) => v,
-                        Ok(Payload::Error { code: 20, .. }) => 0,
-                        _ => 0,
-                    };
+
+                    for target_node in all_nodes {
+                        if target_node == my_node_id {
+                            total_sum += node_clone.read().unwrap().get_local_sum() as u64;
+                            continue;
+                        }
+
+                        let read_payload = Payload::Read {
+                            key: Some(format!("counter_{}", target_node)),
+                        };
+                        let read_result = node_clone.read().unwrap().sync_rpc_call(
+                            "seq-kv",
+                            read_payload,
+                            &tx_clone,
+                            &pending_requests_clone,
+                        );
+                        let current_value = match read_result {
+                            Ok(Payload::ReadOk { value: Some(v), .. }) => v,
+                            Ok(Payload::Error { code: 20, .. }) => 0,
+                            _ => 0,
+                        };
+
+                        total_sum += current_value;
+                    }
+
                     let reply_body = MessageBody {
                         msg_id: Some(node_clone.read().unwrap().generate_msg_id()),
                         in_reply_to: cliennt_msg_id,
                         payload: Payload::ReadOk {
                             messages: None,
-                            value: Some(current_value),
+                            value: Some(total_sum),
                         },
                     };
-                    let reply_msg = set_reply_msg(
-                        &node_clone.read().unwrap().get_id(),
-                        &client_src,
-                        &reply_body,
-                    );
+                    let reply_msg = set_reply_msg(&client_src, &my_node_id, &reply_body);
 
                     tx_clone.send(reply_msg).unwrap();
                 });
@@ -250,71 +304,8 @@ fn main() {
                 Payload::TopologyOk
             }
             Payload::Add { delta } => {
-                let node_clone = Arc::clone(&node);
-                let tx_clone = tx.clone();
-                let client_src = msg.src.clone();
-                let client_msg_id = msg.body.msg_id;
-                let pending_requests_clone = Arc::clone(&pending_requests);
-
-                thread::spawn(move || {
-                    loop {
-                        let read_payload = Payload::Read {
-                            key: Some("global_counter".to_string()),
-                        };
-                        let read_result = node_clone.read().unwrap().sync_rpc_call(
-                            "seq-kv",
-                            read_payload,
-                            &tx_clone,
-                            &pending_requests_clone,
-                        );
-                        let current_value = match read_result {
-                            Ok(Payload::ReadOk { value: Some(v), .. }) => v,
-                            Ok(Payload::Error { code: 20, .. }) => 0,
-                            _ => {
-                                continue;
-                            }
-                        };
-                        let new_value = current_value + delta;
-                        let cas_payload = Payload::Cas {
-                            key: "global_counter".to_string(),
-                            from: current_value,
-                            to: new_value,
-                            create_if_not_exists: Some(true),
-                        };
-                        let cas_result = node_clone.read().unwrap().sync_rpc_call(
-                            "seq-kv",
-                            cas_payload,
-                            &tx_clone,
-                            &pending_requests_clone,
-                        );
-
-                        match cas_result {
-                            Ok(Payload::CasOk) => {
-                                let reply_body = MessageBody {
-                                    msg_id: Some(node_clone.read().unwrap().generate_msg_id()),
-                                    in_reply_to: client_msg_id,
-                                    payload: Payload::AddOk,
-                                };
-                                let reply_msg = set_reply_msg(
-                                    &node_clone.read().unwrap().get_id(),
-                                    &client_src,
-                                    &reply_body,
-                                );
-
-                                tx_clone.send(reply_msg).unwrap();
-                                break;
-                            }
-                            Ok(Payload::Error { code: 22, .. }) => {
-                                continue;
-                            }
-                            _ => {
-                                break;
-                            }
-                        }
-                    }
-                });
-
-                continue;
+                node.read().unwrap().add_local(delta as usize);
+                Payload::AddOk
             }
             _ => {
                 continue;

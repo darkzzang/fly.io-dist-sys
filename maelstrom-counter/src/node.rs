@@ -59,6 +59,7 @@ pub struct Node {
     id: IdType,
     msg_id: AtomicUsize,
     counter: AtomicUsize,
+    local_sum: AtomicUsize,
     storage: Storage,
 }
 
@@ -68,6 +69,7 @@ impl Node {
             id: IdType::None,
             msg_id: AtomicUsize::new(1),
             counter: AtomicUsize::new(1),
+            local_sum: AtomicUsize::new(0),
             storage: Storage::new(),
         }
     }
@@ -78,6 +80,14 @@ impl Node {
 
     pub fn get_id(&self) -> String {
         self.id.to_string()
+    }
+
+    pub fn add_local(&self, delta: usize) {
+        self.local_sum.fetch_add(delta, Ordering::Relaxed);
+    }
+
+    pub fn get_local_sum(&self) -> usize {
+        self.local_sum.load(Ordering::Relaxed)
     }
 
     pub fn generate_msg_id(&self) -> usize {
@@ -184,6 +194,14 @@ impl Node {
             Ok(recv_payload)
         }
     }
+
+    pub fn set_all_nodes(&mut self, nodes: Vec<String>) {
+        self.storage.set_all_nodes(nodes);
+    }
+
+    pub fn get_all_nodes(&self) -> Vec<String> {
+        self.storage.get_all_nodes()
+    }
 }
 
 pub struct Storage {
@@ -193,6 +211,7 @@ pub struct Storage {
     sent_cursors: HashMap<String, usize>,
     msg_src_list: HashMap<u64, String>,
     topology: HashMap<String, Vec<String>>,
+    all_nodes: Vec<String>,
 }
 
 impl Storage {
@@ -204,6 +223,7 @@ impl Storage {
             sent_cursors: HashMap::new(),
             msg_src_list: HashMap::new(),
             topology: HashMap::new(),
+            all_nodes: Vec::new(),
         }
     }
 
@@ -270,5 +290,13 @@ impl Storage {
             let ack_cursor = self.ack_cursors.get(k).copied().unwrap_or(0);
             self.sent_cursors.insert(k.clone(), ack_cursor);
         });
+    }
+
+    pub fn set_all_nodes(&mut self, nodes: Vec<String>) {
+        self.all_nodes = nodes;
+    }
+
+    pub fn get_all_nodes(&self) -> Vec<String> {
+        self.all_nodes.clone()
     }
 }
