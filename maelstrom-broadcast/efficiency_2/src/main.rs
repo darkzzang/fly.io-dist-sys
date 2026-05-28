@@ -180,8 +180,9 @@ fn main() {
                 node.write().unwrap().update_ack_cursor(&msg.src, cursor);
                 continue;
             }
-            Payload::Read => Payload::ReadOk {
-                messages: node.write().unwrap().messages(),
+            Payload::Read { .. } => Payload::ReadOk {
+                messages: Some(node.write().unwrap().messages()),
+                value: None,
             },
             Payload::Topology { topology } => {
                 for (node_id, nodes) in topology {

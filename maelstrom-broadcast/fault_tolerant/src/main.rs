@@ -101,8 +101,9 @@ fn main() {
                     cursor: None,
                 }
             }
-            Payload::Read => Payload::ReadOk {
-                messages: node.write().unwrap().messages(),
+            Payload::Read { .. } => Payload::ReadOk {
+                messages: Some(node.write().unwrap().messages()),
+                value: None,
             },
             Payload::Topology { topology } => {
                 for (node_id, nodes) in topology {

@@ -40,8 +40,9 @@ fn main() {
                 node.set_messages(message);
                 Payload::BroadcastOk
             }
-            Payload::Read => Payload::ReadOk {
-                messages: node.messages(),
+            Payload::Read { .. } => Payload::ReadOk {
+                messages: Some(node.messages()),
+                value: None,
             },
             Payload::Topology { .. } => Payload::TopologyOk,
             _ => {

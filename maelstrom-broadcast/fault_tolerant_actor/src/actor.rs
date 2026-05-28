@@ -58,8 +58,9 @@ impl StdinActor {
                             }
                             vec![]
                         }
-                        Payload::Read => vec![Payload::ReadOk {
-                            messages: self.node.messages(),
+                        Payload::Read { .. } => vec![Payload::ReadOk {
+                            messages: Some(self.node.messages()),
+                            value: None,
                         }],
                         Payload::Topology { topology } => {
                             for (node_id, nodes) in topology {

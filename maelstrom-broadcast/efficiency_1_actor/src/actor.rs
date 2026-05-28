@@ -330,8 +330,9 @@ impl NodeActor {
                 self.update_ack_cursor(&msg.src, *cursor);
                 None
             }
-            Payload::Read => Some(Payload::ReadOk {
-                messages: self.messages(),
+            Payload::Read { .. } => Some(Payload::ReadOk {
+                messages: Some(self.messages()),
+                value: None,
             }),
             Payload::Topology { topology } => {
                 for (node_id, nodes) in topology {

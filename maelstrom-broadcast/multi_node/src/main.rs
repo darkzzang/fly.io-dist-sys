@@ -71,8 +71,9 @@ fn main() {
                     }]
                 }
             }
-            Payload::Read => vec![Payload::ReadOk {
-                messages: node.messages(),
+            Payload::Read { .. } => vec![Payload::ReadOk {
+                messages: Some(node.messages()),
+                value: None,
             }],
             Payload::Topology { topology } => {
                 for (node_id, nodes) in topology {
