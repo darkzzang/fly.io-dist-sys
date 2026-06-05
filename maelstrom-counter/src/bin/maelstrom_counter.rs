@@ -15,7 +15,7 @@ const THRESHOLD: u64 = 600;
 // Latency of other node in challenge.(ms)
 const LATENCY: u64 = 100;
 // Intverval for async flush.(ms)
-const ASYNC_INTERVAL: u64 = 1_000;
+const ASYNC_INTERVAL: u64 = 200;
 
 fn main() {
     let (tx, rx) = mpsc::channel::<Message>();
@@ -126,17 +126,16 @@ fn main() {
     let pending_requests_flush = Arc::clone(&pending_requests);
 
     thread::spawn(move || {
-        let mut last_flushed_sum = 0;
-
         loop {
             thread::sleep(Duration::from_millis(ASYNC_INTERVAL));
 
-            let (current_sum, node_id) = {
+            let (current_sum, node_id, acks_to_send) = {
                 let locked_node = node_clone_flush.read().unwrap();
-                (locked_node.get_local_sum(), locked_node.get_id())
+                let (sum, acks) = locked_node.get_flush_batch();
+                (sum, locked_node.get_id(), acks)
             };
 
-            if node_id == "uninitialized" || current_sum == 0 || current_sum == last_flushed_sum {
+            if node_id == "uninitialized" {
                 continue;
             }
 
@@ -154,8 +153,26 @@ fn main() {
                 &pending_requests_flush,
             );
 
-            if let Ok(Payload::WriteOk) = write_result {
-                last_flushed_sum = current_sum;
+            match write_result {
+                Ok(Payload::WriteOk) => {
+                    let locked_node = node_clone_flush.read().unwrap();
+                    for (client_src, client_msg_id) in acks_to_send {
+                        let reply_body = MessageBody {
+                            msg_id: Some(locked_node.generate_msg_id()),
+                            in_reply_to: Some(client_msg_id),
+                            payload: Payload::AddOk,
+                        };
+                        let reply_msg = set_reply_msg(&client_src, &node_id, &reply_body);
+
+                        tx_clone_flush.send(reply_msg).unwrap();
+                    }
+                }
+                _ => {
+                    node_clone_flush
+                        .read()
+                        .unwrap()
+                        .requeue_unacked_adds(acks_to_send);
+                }
             }
         }
     });
@@ -206,11 +223,11 @@ fn main() {
                     let mut neighbors = Vec::new();
 
                     if idx == 0 {
-                        for i in 1..sorted_nodes.len() {
-                            neighbors.push(sorted_nodes[i].clone());
+                        for node in sorted_nodes.iter().skip(1) {
+                            neighbors.push(node.clone());
                         }
                     } else {
-                        neighbors.push(sorted_nodes[0].clone());
+                        neighbors.push(sorted_nodes.get(0).unwrap().clone());
                     }
 
                     locked_node.set_topology(&node_id, &neighbors);
@@ -304,8 +321,13 @@ fn main() {
                 Payload::TopologyOk
             }
             Payload::Add { delta } => {
-                node.read().unwrap().add_local(delta as usize);
-                Payload::AddOk
+                if let Some(msg_id) = msg.body.msg_id {
+                    node.read()
+                        .unwrap()
+                        .process_add(delta as usize, msg.src.clone(), msg_id);
+                }
+
+                continue;
             }
             _ => {
                 continue;

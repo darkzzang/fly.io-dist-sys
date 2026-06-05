@@ -60,6 +60,7 @@ pub struct Node {
     msg_id: AtomicUsize,
     counter: AtomicUsize,
     local_sum: AtomicUsize,
+    unacked_adds: Mutex<Vec<(String, usize)>>,
     storage: Storage,
 }
 
@@ -70,6 +71,7 @@ impl Node {
             msg_id: AtomicUsize::new(1),
             counter: AtomicUsize::new(1),
             local_sum: AtomicUsize::new(0),
+            unacked_adds: Mutex::new(Vec::new()),
             storage: Storage::new(),
         }
     }
@@ -80,10 +82,6 @@ impl Node {
 
     pub fn get_id(&self) -> String {
         self.id.to_string()
-    }
-
-    pub fn add_local(&self, delta: usize) {
-        self.local_sum.fetch_add(delta, Ordering::Relaxed);
     }
 
     pub fn get_local_sum(&self) -> usize {
@@ -201,6 +199,26 @@ impl Node {
 
     pub fn get_all_nodes(&self) -> Vec<String> {
         self.storage.get_all_nodes()
+    }
+
+    pub fn process_add(&self, delta: usize, client_src: String, msg_id: usize) {
+        let mut queue = self.unacked_adds.lock().unwrap();
+        self.local_sum.fetch_add(delta, Ordering::Relaxed);
+        queue.push((client_src, msg_id));
+    }
+
+    pub fn get_flush_batch(&self) -> (usize, Vec<(String, usize)>) {
+        let mut queue = self.unacked_adds.lock().unwrap();
+        let current_sum = self.local_sum.load(Ordering::Relaxed);
+        let acks = std::mem::take(&mut *queue);
+
+        (current_sum, acks)
+    }
+
+    pub fn requeue_unacked_adds(&self, mut failed_acks: Vec<(String, usize)>) {
+        let mut queue = self.unacked_adds.lock().unwrap();
+        failed_acks.append(&mut queue);
+        *queue = failed_acks;
     }
 }
 
