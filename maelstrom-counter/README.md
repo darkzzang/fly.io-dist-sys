@@ -129,5 +129,52 @@ INFO [2026-05-24 17:47:39,603] jepsen test runner - jepsen.core {:perf {:latency
 Everything looks good! ヽ(‘ー`)ノ  
 ```
 
+---
+
+```sh
+maelstrom test -w g-counter --bin target.tmp/release/maelstrom_counter_actor --node-count 3 --rate 100 --time-limit 20 --nemesis partition
+```
+
+```sh
+INFO [2026-06-08 11:21:24,307] jepsen test runner - jepsen.core {:perf {:latency-graph {:valid? true},
+        :rate-graph {:valid? true},
+        :valid? true},
+ :timeline {:valid? true},
+ :exceptions {:valid? true},
+ :stats {:valid? true,
+         :count 1442,
+         :ok-count 1442,
+         :fail-count 0,
+         :info-count 0,
+         :by-f {:add {:valid? true,
+                      :count 484,
+                      :ok-count 484,
+                      :fail-count 0,
+                      :info-count 0},
+                :read {:valid? true,
+                       :count 958,
+                       :ok-count 958,
+                       :fail-count 0,
+                       :info-count 0}}},
+ :availability {:valid? true, :ok-fraction 1.0},
+ :net {:all {:send-count 8528,
+             :recv-count 8528,
+             :msg-count 8528,
+             :msgs-per-op 5.914008},
+       :clients {:send-count 2890, :recv-count 2890, :msg-count 2890},
+       :servers {:send-count 5638,
+                 :recv-count 5638,
+                 :msg-count 5638,
+                 :msgs-per-op 3.9098475},
+       :valid? true},
+ :workload {:valid? true,
+            :errors nil,
+            :final-reads (956 956 956),
+            :acceptable ([956 956])},
+ :valid? true}
+
+
+Everything looks good! ヽ(‘ー`)ノ
+```
 
 This will run a 3-node cluster for 20 seconds and increment the counter at the rate of 100 requests per second. It will induce network partitions during the test.
